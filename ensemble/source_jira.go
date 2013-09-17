@@ -67,6 +67,7 @@ func (j *Jira) FetchUpdates() (feed JiraFeed) {
 	req, err := http.NewRequest("GET", j.Url, nil)
 	if err != nil {
 		log.Printf("ERR building request: %s", err)
+		return
 	}
 
 	req.SetBasicAuth(j.Username, j.Password)
@@ -74,12 +75,14 @@ func (j *Jira) FetchUpdates() (feed JiraFeed) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("ERR making request: %s", err)
+		return
 	}
 
 	dec := xml.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)
 	if err != nil {
 		log.Printf("ERR decoding json from JIRA: %s\n%s", err, resp.Body)
+		return
 	}
 
 	resp.Body.Close()

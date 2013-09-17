@@ -73,12 +73,14 @@ func (y *Yammer) FetchUpdates() (feed YammerFeed) {
 	defer resp.Body.Close()
 	if err != nil {
 		log.Printf("ERR making request for %s: %s", url, err)
+		return
 	}
 
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)
 	if err != nil {
 		log.Printf("ERR decoding json from Yammer: %s\n%s", err, resp.Body)
+		return
 	}
 
 	if len(feed.Messages) > 0 {

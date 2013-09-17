@@ -77,12 +77,14 @@ func (g *Github) FetchUpdates() (feed GithubFeed) {
 	resp, err := http.Get(g.Url)
 	if err != nil {
 		log.Printf("ERR making request for %s: %s", g.Url, err)
+		return
 	}
 
 	dec := xml.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)
 	if err != nil {
 		log.Printf("ERR decoding xml from GitHub: %s\n%s", err, resp.Body)
+		return
 	}
 
 	resp.Body.Close()
