@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dacort/choirmaster/choir"
@@ -28,17 +29,58 @@ type YammerConfig struct {
 }
 
 type YammerFeed struct {
-	Messages []YammerMessage
+	Messages   []YammerMessage
+	References []YammerReference
+}
+
+type HammerTime struct {
+	time.Time
+}
+
+func (t *HammerTime) UnmarshalJSON(data []byte) error {
+	// Yammer format: "2013/09/20 18:40:57 +0000""
+	const longForm = "2006/01/02 15:04:05 +0000"
+	timestamp := strings.Replace(fmt.Sprintf("%s", data), "\"", "", -1)
+
+	parsed, err := time.Parse(longForm, timestamp)
+	if err != nil {
+		fmt.Println("Could not unmarshall %s", timestamp)
+		return err
+	}
+	t.Time = parsed
+	return nil
 }
 
 type YammerMessage struct {
 	Id              int
+	Created_at      HammerTime
 	Replied_To_Id   int
 	Content_Excerpt string
 	Body            struct {
 		Rich  string
 		Plain string
 	}
+	Sender_Id int
+}
+
+type YammerReference struct {
+	Type      string
+	Id        int
+	Full_Name string
+}
+
+func (yf *YammerFeed) LookupUser(user_id int) (full_name string) {
+	for _, item := range yf.References {
+		if item.Type == "user" && item.Id == user_id {
+			full_name = item.Full_Name
+		}
+	}
+
+	if full_name == "" {
+		full_name = "Unknown User"
+	}
+
+	return
 }
 
 func (ym *YammerMessage) SoundClass() string {
@@ -70,11 +112,11 @@ func (ym *YammerMessage) GetText() string {
 func (y *Yammer) FetchUpdates() (feed YammerFeed) {
 	url := fmt.Sprintf(yammerActivityUrl, y.AccessToken, y.LastId)
 	resp, err := http.Get(url)
-	defer resp.Body.Close()
 	if err != nil {
 		log.Printf("ERR making request for %s: %s", url, err)
 		return
 	}
+	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)
@@ -117,7 +159,7 @@ func (y *Yammer) Run(conductor chan *choir.Note) {
 			note := &choir.Note{
 				Label: message.GetCategory(),
 				Sound: message.SoundClass(),
-				Text:  message.GetText(),
+				Text:  fmt.Sprintf("%s: %s", feed.LookupUser(message.Sender_Id), message.GetText()),
 				Choir: y.Choir,
 			}
 

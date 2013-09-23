@@ -22,10 +22,14 @@ type Campfire struct {
 	Users map[int]string
 }
 
+type Room struct {
+	Id            int
+	Name          string
+	LastMessageId int
+}
+
 type RoomResponse struct {
-	Room struct {
-		Name string
-	}
+	Room Room
 }
 type UserResponse struct {
 	User struct {
@@ -141,8 +145,9 @@ func (c *Campfire) Run(conductor chan *choir.Note) {
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		log.Fatalf("error making request: %s", err)
+		log.Fatalf("error making campfire request: %s", err)
 	}
+	defer resp.Body.Close()
 
 	var reader *bufio.Reader
 	reader = bufio.NewReader(resp.Body)
