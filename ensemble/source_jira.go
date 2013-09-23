@@ -63,6 +63,56 @@ func (j *Jira) Configure(config interface{}) {
 	fmt.Printf("Configured JIRA: %s\n", configObject.Http.Domain)
 }
 
+func (j *Jira) PrintUpdatesSince(since time.Time) {
+	var feed JiraFeed
+	url := "https://simplymeasured.jira.com/activity?maxResults=1000&os_authType=basic&title=undefined"
+	for {
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			log.Printf("ERR building request: %s", err)
+			return
+		}
+
+		req.SetBasicAuth(j.Username, j.Password)
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			log.Printf("ERR making request: %s", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		dec := xml.NewDecoder(resp.Body)
+		err = dec.Decode(&feed)
+		if err != nil {
+			log.Printf("ERR decoding json from JIRA: %s\n%s", err, resp.Body)
+			return
+		}
+
+		// Don't try to paginate, just change the max results above
+		getNext := false
+
+		for _, message := range feed.Entry {
+			if message.Published.Before(since) {
+				getNext = false
+				break
+			}
+
+			fmt.Println(
+				message.Published.Add(-7*time.Hour).Format("2006-01-02 15:04"),
+				"\t",
+				"JIRA",
+			)
+
+		}
+
+		if getNext == false {
+			break
+		}
+
+	}
+}
+
 func (j *Jira) FetchUpdates() (feed JiraFeed) {
 	req, err := http.NewRequest("GET", j.Url, nil)
 	if err != nil {

@@ -73,6 +73,48 @@ func (g *Github) Configure(config interface{}) {
 	fmt.Printf("Configured Github: %s\n", configObject.Http.Orgname)
 }
 
+func (g *Github) PrintUpdatesSince(since time.Time) {
+	var feed GithubFeed
+	page := 1
+	url := g.Url
+
+	for {
+		resp, err := http.Get(url)
+		if err != nil {
+			log.Printf("ERR making request for %s: %s", g.Url, err)
+			return
+		}
+		defer resp.Body.Close()
+
+		dec := xml.NewDecoder(resp.Body)
+		err = dec.Decode(&feed)
+		if err != nil {
+			log.Printf("ERR decoding xml from GitHub: %s\n%s", err, resp.Body)
+			return
+		}
+		getNext := true
+		for _, message := range feed.Entry {
+			if message.Published.Before(since) {
+				getNext = false
+				break
+			}
+
+			fmt.Println(message.Published.Add(-7*time.Hour).Format("2006-01-02 15:04"), "\t", "Github")
+		}
+
+		if getNext == false {
+			break
+		}
+
+		// Otherwise, CONTINUE
+		page = page + 1
+		if page == 11 {
+			break
+		}
+		url = fmt.Sprintf("%s&page=%d", g.Url, page)
+	}
+}
+
 func (g *Github) FetchUpdates() (feed GithubFeed) {
 	resp, err := http.Get(g.Url)
 	if err != nil {
