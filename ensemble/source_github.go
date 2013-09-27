@@ -79,6 +79,7 @@ func (g *Github) FetchUpdates() (feed GithubFeed) {
 		log.Printf("ERR making request for %s: %s", g.Url, err)
 		return
 	}
+	defer resp.Body.Close()
 
 	dec := xml.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)
@@ -86,8 +87,6 @@ func (g *Github) FetchUpdates() (feed GithubFeed) {
 		log.Printf("ERR decoding xml from GitHub: %s\n%s", err, resp.Body)
 		return
 	}
-
-	resp.Body.Close()
 
 	return
 }

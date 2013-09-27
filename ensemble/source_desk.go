@@ -29,7 +29,7 @@ type DeskConfig struct {
 	Type string
 	Key  string
 	Http struct {
-		Domain   string
+		Orgname  string
 		Username string
 		Password string
 	}
@@ -173,22 +173,20 @@ func (d *Desk) Configure(config interface{}) {
 		return
 	}
 
-	d.Url = fmt.Sprintf(deskComUrl, configObject.Http.Domain)
+	d.Url = fmt.Sprintf(deskComUrl, configObject.Http.Orgname)
 	d.Username = configObject.Http.Username
 	d.Password = configObject.Http.Password
 	d.Choir = &choir.Choir{configObject.Key}
 
 	d.Users = make(map[int]string)
 
-	fmt.Printf("Configured Desk: %s\n", configObject.Http.Domain)
+	fmt.Printf("Configured Desk: %s\n", configObject.Http.Orgname)
 }
 
 func (d *Desk) Run(conductor chan *choir.Note) {
 	for {
 		last_update := d.LastUpdate
 		feed := d.FetchUpdates()
-
-		fmt.Println(feed.Total_Entries)
 
 		for _, entry := range feed.Embedded.Entries {
 			go func(e DeskEntry) {
@@ -202,7 +200,7 @@ func (d *Desk) Run(conductor chan *choir.Note) {
 			}(entry)
 		}
 
-		time.Sleep(60 * time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }
 
@@ -215,42 +213,24 @@ func init() {
 // API IMPLEMENTATION
 // ####################################
 func (d *Desk) FetchUpdates() (feed DeskFeed) {
-	feedUrl := fmt.Sprintf("%s/cases/search?since_updated_at=%d", d.Url, d.LastUpdate.Unix())
-	fmt.Println(feedUrl)
-	req, err := http.NewRequest("GET", feedUrl, nil)
-	if err != nil {
-		log.Printf("ERR building request: %s", err)
-		return
+	feedUrl := fmt.Sprintf("/cases/search?since_updated_at=%d", d.LastUpdate.Unix())
+
+	err := d.GetUrl(feedUrl, feed)
+
+	if err == nil {
+		d.LastUpdate = time.Now()
 	}
-
-	req.SetBasicAuth(d.Username, d.Password)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		log.Printf("ERR making request: %s", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&feed)
-	if err != nil {
-		log.Printf("ERR decoding json from Desk: %s\n%s", err, resp.Body)
-		return
-	}
-
-	d.LastUpdate = time.Now()
 
 	return
 }
 
 // Generic API Getter
-func (d *Desk) GetUrl(path string, decode_object interface{}) {
+func (d *Desk) GetUrl(path string, decode_object interface{}) error {
 	url := fmt.Sprintf("%s%s", d.Url, path)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Printf("ERR building request: %s", err)
-		return
+		return err
 	}
 
 	req.SetBasicAuth(d.Username, d.Password)
@@ -258,15 +238,16 @@ func (d *Desk) GetUrl(path string, decode_object interface{}) {
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		log.Printf("ERR making request: %s", err)
-		return
+		return err
 	}
+	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&decode_object)
 	if err != nil {
 		log.Printf("ERR decoding json from Desk: %s\n%s", err, resp.Body)
-		return
+		return err
 	}
 
-	return
+	return nil
 }

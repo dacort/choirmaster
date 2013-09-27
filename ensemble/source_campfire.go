@@ -13,10 +13,10 @@ import (
 )
 
 type Campfire struct {
-	Url    string
-	Domain string
-	Token  string
-	Choir  *choir.Choir
+	Url     string
+	Orgname string
+	Token   string
+	Choir   *choir.Choir
 
 	Rooms map[int]string
 	Users map[int]string
@@ -38,11 +38,11 @@ type UserResponse struct {
 }
 
 type CampfireConfig struct {
-	Type   string
-	Key    string
-	Rooms  []int
-	Token  string
-	Domain string
+	Type    string
+	Key     string
+	Rooms   []int
+	Token   string
+	Orgname string
 }
 
 type CampfireMessage struct {
@@ -61,7 +61,7 @@ func (c *Campfire) GetUser(id int) string {
 	}
 
 	log.Printf("Looking up user %d", id)
-	userUrl := fmt.Sprintf("https://%s.campfirenow.com/users/%d.json", c.Domain, id)
+	userUrl := fmt.Sprintf("https://%s.campfirenow.com/users/%d.json", c.Orgname, id)
 	req, err := http.NewRequest("GET", userUrl, nil)
 	if err != nil {
 		log.Fatalf("error building request: %s", err)
@@ -92,7 +92,7 @@ func (c *Campfire) GetRoom(id int) string {
 	}
 
 	log.Printf("Looking up room %d", id)
-	roomUrl := fmt.Sprintf("https://%s.campfirenow.com/room/%d.json", c.Domain, id)
+	roomUrl := fmt.Sprintf("https://%s.campfirenow.com/room/%d.json", c.Orgname, id)
 	req, err := http.NewRequest("GET", roomUrl, nil)
 	if err != nil {
 		log.Fatalf("error building request: %s", err)
@@ -127,7 +127,7 @@ func (c *Campfire) Configure(config interface{}) {
 
 	c.Url = fmt.Sprintf("https://streaming.campfirenow.com/room/%d/live.json", configObject.Rooms[0])
 	c.Token = configObject.Token
-	c.Domain = configObject.Domain
+	c.Orgname = configObject.Orgname
 
 	c.Rooms = make(map[int]string)
 	c.Users = make(map[int]string)
