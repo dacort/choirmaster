@@ -111,12 +111,18 @@ func (ym *YammerMessage) GetText() string {
 
 func (y *Yammer) FetchUpdates() (feed YammerFeed) {
 	url := fmt.Sprintf(yammerActivityUrl, y.AccessToken, y.LastId)
+
 	resp, err := http.Get(url)
 	if err != nil {
 		log.Printf("ERR making request for %s: %s", url, err)
 		return
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Println("ERR Received a non-200 response from Yammer: ", resp.StatusCode)
+		return
+	}
 
 	dec := json.NewDecoder(resp.Body)
 	err = dec.Decode(&feed)

@@ -200,7 +200,7 @@ func (d *Desk) Run(conductor chan *choir.Note) {
 			}(entry)
 		}
 
-		time.Sleep(5 * time.Second)
+		time.Sleep(10 * time.Second)
 	}
 }
 
@@ -215,9 +215,9 @@ func init() {
 func (d *Desk) FetchUpdates() (feed DeskFeed) {
 	feedUrl := fmt.Sprintf("/cases/search?since_updated_at=%d", d.LastUpdate.Unix())
 
-	err := d.GetUrl(feedUrl, feed)
+	err := d.GetUrl(feedUrl, &feed)
 
-	if err == nil {
+	if err == nil && len(feed.Embedded.Entries) > 0 {
 		d.LastUpdate = time.Now()
 	}
 
@@ -227,6 +227,7 @@ func (d *Desk) FetchUpdates() (feed DeskFeed) {
 // Generic API Getter
 func (d *Desk) GetUrl(path string, decode_object interface{}) error {
 	url := fmt.Sprintf("%s%s", d.Url, path)
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		log.Printf("ERR building request: %s", err)
